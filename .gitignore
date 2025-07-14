@@ -1,0 +1,7 @@
+
+/fastapi_project/app/__pycache__
+/fastapi_project/app/core/__pycache__
+/fastapi_project/app/models/__pycache__
+/fastapi_project/app/schemas/__pycache__
+/fastapi_project/app/routers/__pycache__
+/fastapi_project/app/services/__pycache__
