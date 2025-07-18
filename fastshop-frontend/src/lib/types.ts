@@ -11,8 +11,6 @@ export interface User {
   is_superuser: boolean
   created_at: string
   updated_at?: string
-  product_count: number
-  user_type: 'buyer' | 'seller' | 'admin'
 }
 
 export interface UserCreate {
@@ -20,7 +18,6 @@ export interface UserCreate {
   email: string
   password: string
   full_name?: string
-  user_type?: 'buyer' | 'seller'
 }
 
 export interface UserUpdate {
@@ -76,6 +73,8 @@ export interface ProductCreate {
   quantity: number
   sku: string
   category?: string
+  status?: ProductStatus
+  is_featured?: boolean
 }
 
 export interface ProductUpdate {
@@ -185,14 +184,26 @@ export interface OrderCreate {
 // PAGINATION & API RESPONSE TYPES
 // ============================================================================
 
-export interface PaginatedResponse<T> {
-  items: T[]
+export interface ProductListResponse {
+  items: Product[]
   total: number
   page: number
   size: number
   pages: number
-  has_next: boolean
-  has_prev: boolean
+}
+
+export interface StockUpdate {
+  quantity: number
+}
+
+export interface ProductSearch {
+  name?: string
+  description?: string
+  category?: string
+  min_price?: number
+  max_price?: number
+  status?: ProductStatus
+  is_featured?: boolean
 }
 
 export interface ApiError {

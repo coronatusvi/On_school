@@ -10,7 +10,9 @@ import {
   Product,
   ProductCreate,
   ProductUpdate,
-  PaginatedResponse,
+  ProductListResponse,
+  ProductSearch,
+  StockUpdate,
   Order,
   OrderCreate,
   ReviewCreate,
@@ -57,6 +59,14 @@ class ApiClient {
           this.handleUnauthorized()
         } else if (error.response?.status >= 500) {
           toast.error('Lỗi server. Vui lòng thử lại sau!')
+        } else if (error.response?.data?.detail) {
+          // Handle FastAPI validation errors
+          if (Array.isArray(error.response.data.detail)) {
+            const firstError = error.response.data.detail[0]
+            toast.error(firstError.msg || 'Có lỗi xảy ra')
+          } else {
+            toast.error(error.response.data.detail)
+          }
         } else if (error.response?.data?.message) {
           toast.error(error.response.data.message)
         }
@@ -122,7 +132,7 @@ class ApiClient {
 
   async getCurrentUser(): Promise<User> {
     try {
-      const response = await this.api.get<User>('/auth/me')
+      const response = await this.api.get<User>('/users/me')
       return response.data
     } catch (error) {
       throw error
@@ -150,17 +160,12 @@ class ApiClient {
   // ============================================================================
 
   async getProducts(params?: {
-    page?: number
-    size?: number
-    search?: string
-    category?: string
-    min_price?: number
-    max_price?: number
-    sort_by?: string
-    sort_order?: 'asc' | 'desc'
-  }): Promise<PaginatedResponse<Product>> {
+    skip?: number
+    limit?: number
+    owner_id?: number
+  }): Promise<ProductListResponse> {
     try {
-      const response = await this.api.get<PaginatedResponse<Product>>('/products/', { params })
+      const response = await this.api.get<ProductListResponse>('/products/', { params })
       return response.data
     } catch (error) {
       throw error
@@ -222,11 +227,48 @@ class ApiClient {
     }
   }
 
-  async searchProducts(query: string): Promise<Product[]> {
+  async searchProducts(searchParams: ProductSearch, params?: {
+    skip?: number
+    limit?: number
+  }): Promise<Product[]> {
     try {
-      const response = await this.api.get<Product[]>('/products/search', {
-        params: { q: query }
-      })
+      const response = await this.api.post<Product[]>('/products/search', searchParams, { params })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async updateStock(id: number, stockUpdate: StockUpdate): Promise<Product> {
+    try {
+      const response = await this.api.patch<Product>(`/products/${id}/stock`, stockUpdate)
+      toast.success('Cập nhật tồn kho thành công!')
+      return response.data
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Cập nhật tồn kho thất bại'
+      toast.error(message)
+      throw error
+    }
+  }
+
+  async getProductsByCategory(category: string, params?: {
+    skip?: number
+    limit?: number
+  }): Promise<Product[]> {
+    try {
+      const response = await this.api.get<Product[]>(`/products/category/${category}`, { params })
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async getMyProducts(params?: {
+    skip?: number
+    limit?: number
+  }): Promise<Product[]> {
+    try {
+      const response = await this.api.get<Product[]>('/products/my-products', { params })
       return response.data
     } catch (error) {
       throw error
@@ -250,12 +292,12 @@ class ApiClient {
   }
 
   async getOrders(params?: {
-    page?: number
-    size?: number
+    skip?: number
+    limit?: number
     status?: string
-  }): Promise<PaginatedResponse<Order>> {
+  }): Promise<Order[]> {
     try {
-      const response = await this.api.get<PaginatedResponse<Order>>('/orders/', { params })
+      const response = await this.api.get<Order[]>('/orders/', { params })
       return response.data
     } catch (error) {
       throw error

@@ -56,7 +56,7 @@ class FastAPIApp:
         Thể hiện Encapsulation
         """
         return """
-        ## FastAPI Project - Ôn tập OOP và Router
+        ## FastAPI Project
 
         Dự án FastAPI đầy đủ để thực hành các khái niệm:
         

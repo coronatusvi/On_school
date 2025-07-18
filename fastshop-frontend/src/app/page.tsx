@@ -9,7 +9,7 @@ import { apiClient } from '@/lib/api'
 import { ShoppingCart, Search, Star, TrendingUp, Users, Package } from 'lucide-react'
 
 export default function HomePage() {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, isSeller } = useAuth()
   const { getTotalItems } = useCart()
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,10 +25,18 @@ export default function HomePage() {
 
   const loadFeaturedProducts = async () => {
     try {
-      const products = await apiClient.getFeaturedProducts(8)
-      setFeaturedProducts(products)
+      // Chỉ load sản phẩm nếu có user và user là seller
+      if (isAuthenticated && isSeller) {
+        const response = await apiClient.getProducts({ owner_id: user?.id, limit: 8 })
+        setFeaturedProducts(response.items || [])
+      } else {
+        // Nếu không phải seller hoặc chưa đăng nhập, load sản phẩm nổi bật
+        const response = await apiClient.getFeaturedProducts(8)
+        setFeaturedProducts(response || [])
+      }
     } catch (error) {
       console.error('Error loading featured products:', error)
+      setFeaturedProducts([])
     } finally {
       setLoading(false)
     }
@@ -170,9 +178,14 @@ export default function HomePage() {
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Sản phẩm nổi bật</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              {isAuthenticated && isSeller ? 'Sản phẩm của bạn' : 'Sản phẩm nổi bật'}
+            </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Khám phá những sản phẩm được yêu thích nhất từ các nhà bán hàng uy tín
+              {isAuthenticated && isSeller 
+                ? 'Quản lý và theo dõi các sản phẩm bạn đang bán'
+                : 'Khám phá những sản phẩm được yêu thích nhất từ các nhà bán hàng uy tín'
+              }
             </p>
           </div>
 
@@ -185,6 +198,38 @@ export default function HomePage() {
                   <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div>
                 </div>
               ))}
+            </div>
+          ) : featuredProducts.length === 0 ? (
+            <div className="text-center py-16">
+              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                {isAuthenticated && isSeller 
+                  ? 'Hiện tại bạn chưa có sản phẩm nào'
+                  : 'Hiện tại người bán chưa cập nhật sản phẩm'
+                }
+              </h3>
+              <p className="text-gray-500 mb-6">
+                {isAuthenticated && isSeller 
+                  ? 'Hãy thêm sản phẩm đầu tiên để bắt đầu bán hàng'
+                  : 'Vui lòng quay lại sau hoặc đăng ký làm người bán để thêm sản phẩm'
+                }
+              </p>
+              {isAuthenticated && isSeller && (
+                <Link
+                  href="/products/create"
+                  className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  Thêm sản phẩm đầu tiên
+                </Link>
+              )}
+              {!isAuthenticated && (
+                <Link
+                  href="/register"
+                  className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  Đăng ký bán hàng
+                </Link>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -219,24 +264,36 @@ export default function HomePage() {
                       ({product.review_count || 0})
                     </span>
                   </div>
-                  <Link
-                    href={`/products/${product.id}`}
-                    className="block w-full bg-primary-600 text-white text-center py-2 rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    Xem chi tiết
-                  </Link>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/products/${product.id}`}
+                      className="flex-1 bg-primary-600 text-white text-center py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                      Xem chi tiết
+                    </Link>
+                    {isAuthenticated && isSeller && (
+                      <Link
+                        href={`/products/${product.id}/edit`}
+                        className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Sửa
+                      </Link>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           <div className="text-center mt-12">
-            <Link
-              href="/products"
-              className="inline-flex items-center px-6 py-3 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
-            >
-              Xem tất cả sản phẩm
-            </Link>
+            {featuredProducts.length > 0 && (
+              <Link
+                href="/products"
+                className="inline-flex items-center px-6 py-3 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+              >
+                {isAuthenticated && isSeller ? 'Quản lý tất cả sản phẩm' : 'Xem tất cả sản phẩm'}
+              </Link>
+            )}
           </div>
         </div>
       </section>

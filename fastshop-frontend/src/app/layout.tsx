@@ -1,18 +1,22 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Toaster } from 'react-hot-toast'
-import AuthProvider from '@/contexts/AuthContext'
-import CartProvider from '@/contexts/CartContext'
+import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Export viewport separately (NextJS 14+ requirement)
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'FastShop - Nền tảng thương mại điện tử',
   description: 'Mua sắm trực tuyến dễ dàng với FastShop. Hàng nghìn sản phẩm chất lượng, giao hàng nhanh chóng.',
   keywords: 'mua sắm, thương mại điện tử, online shopping, fastshop',
   authors: [{ name: 'FastShop Team' }],
-  viewport: 'width=device-width, initial-scale=1',
   robots: 'index, follow',
   openGraph: {
     title: 'FastShop - Nền tảng thương mại điện tử',
@@ -34,60 +38,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#3B82F6" />
       </head>
       <body className="min-h-screen bg-gray-50">
-        <AuthProvider>
-          <CartProvider>
-            <div className="flex flex-col min-h-screen">
-              {/* Main content */}
-              <main className="flex-grow">
-                {children}
-              </main>
-            </div>
-
-            {/* Toast notifications */}
-            <Toaster
-              position="top-right"
-              reverseOrder={false}
-              gutter={8}
-              containerClassName=""
-              containerStyle={{}}
-              toastOptions={{
-                // Default options for all toasts
-                className: '',
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-
-                // Success toast style
-                success: {
-                  duration: 3000,
-                  style: {
-                    background: '#10B981',
-                    color: '#fff',
-                  },
-                  iconTheme: {
-                    primary: '#fff',
-                    secondary: '#10B981',
-                  },
-                },
-
-                // Error toast style
-                error: {
-                  duration: 5000,
-                  style: {
-                    background: '#EF4444',
-                    color: '#fff',
-                  },
-                  iconTheme: {
-                    primary: '#fff',
-                    secondary: '#EF4444',
-                  },
-                },
-              }}
-            />
-          </CartProvider>
-        </AuthProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
