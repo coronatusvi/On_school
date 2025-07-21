@@ -50,34 +50,7 @@ class ProductRouter:
             description="Lấy danh sách sản phẩm với phân trang và tìm kiếm"
         )
         
-        router.add_api_route(
-            "/{product_id}",
-            self.get_product_by_id,
-            methods=["GET"],
-            response_model=ProductResponse,
-            summary="Lấy thông tin sản phẩm",
-            description="Lấy thông tin chi tiết của một sản phẩm"
-        )
-        
-        router.add_api_route(
-            "/{product_id}",
-            self.update_product,
-            methods=["PUT"],
-            response_model=ProductResponse,
-            summary="Cập nhật sản phẩm",
-            description="Cập nhật thông tin sản phẩm (chỉ owner)"
-        )
-        
-        router.add_api_route(
-            "/{product_id}",
-            self.delete_product,
-            methods=["DELETE"],
-            status_code=status.HTTP_204_NO_CONTENT,
-            summary="Xóa sản phẩm",
-            description="Xóa sản phẩm (chỉ owner)"
-        )
-        
-        # Special Operations
+        # Special Operations - PHẢI ĐẶT TRƯỚC {product_id}
         router.add_api_route(
             "/search",
             self.search_products,
@@ -85,15 +58,6 @@ class ProductRouter:
             response_model=List[ProductResponse],
             summary="Tìm kiếm sản phẩm",
             description="Tìm kiếm sản phẩm theo nhiều tiêu chí"
-        )
-        
-        router.add_api_route(
-            "/{product_id}/stock",
-            self.update_stock,
-            methods=["PATCH"],
-            response_model=ProductResponse,
-            summary="Cập nhật tồn kho",
-            description="Cập nhật số lượng tồn kho sản phẩm"
         )
         
         router.add_api_route(
@@ -121,6 +85,43 @@ class ProductRouter:
             response_model=List[ProductResponse],
             summary="Lấy sản phẩm của tôi",
             description="Lấy danh sách sản phẩm do user hiện tại sở hữu"
+        )
+        
+        # Routes với path parameters - PHẢI ĐẶT SAU
+        router.add_api_route(
+            "/{product_id}",
+            self.get_product_by_id,
+            methods=["GET"],
+            response_model=ProductResponse,
+            summary="Lấy thông tin sản phẩm",
+            description="Lấy thông tin chi tiết của một sản phẩm"
+        )
+        
+        router.add_api_route(
+            "/{product_id}",
+            self.update_product,
+            methods=["PUT"],
+            response_model=ProductResponse,
+            summary="Cập nhật sản phẩm",
+            description="Cập nhật thông tin sản phẩm (chỉ owner)"
+        )
+        
+        router.add_api_route(
+            "/{product_id}",
+            self.delete_product,
+            methods=["DELETE"],
+            status_code=status.HTTP_204_NO_CONTENT,
+            summary="Xóa sản phẩm",
+            description="Xóa sản phẩm (chỉ owner)"
+        )
+        
+        router.add_api_route(
+            "/{product_id}/stock",
+            self.update_stock,
+            methods=["PATCH"],
+            response_model=ProductResponse,
+            summary="Cập nhật tồn kho",
+            description="Cập nhật số lượng tồn kho sản phẩm"
         )
     
     async def create_product(

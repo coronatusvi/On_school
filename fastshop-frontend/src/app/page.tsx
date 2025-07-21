@@ -26,8 +26,8 @@ export default function HomePage() {
   const loadFeaturedProducts = async () => {
     try {
       // Chỉ load sản phẩm nếu có user và user là seller
-      if (isAuthenticated && isSeller) {
-        const response = await apiClient.getProducts({ owner_id: user?.id, limit: 8 })
+      if (isAuthenticated && isSeller && user?.id) {
+        const response = await apiClient.getProducts({ owner_id: user.id, limit: 8 })
         setFeaturedProducts(response.items || [])
       } else {
         // Nếu không phải seller hoặc chưa đăng nhập, load sản phẩm nổi bật

@@ -12,3 +12,9 @@ We're glad you dropped by. This repository is a collection of my projects relate
 Feel free to explore each branch to see the different projects and exercises. If you have any questions or suggestions, don't hesitate to reach out!
 
 Thank you for checking out my University Projects Repository. Let's learn and grow together! 🌟
+
+<!-- Backend Build -->
+conda activate chat && cd Documents/GITHUB/On_school/fastapi_project/ && uvicorn app.main:app --reload
+
+<!-- Frontend Start -->
+cd Documents/GITHUB/On_school/fastshop-frontend && npm run dev

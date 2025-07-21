@@ -25,16 +25,18 @@ export default function LoginPage() {
     // Validate username
     if (!formData.username.trim()) {
       errors.username = 'Tên đăng nhập không được để trống'
-    } else if (formData.username.length < 3) {
-      errors.username = 'Tên đăng nhập phải có ít nhất 3 ký tự'
     }
+    // else if (formData.username.length < 3) {
+    //   errors.username = 'Tên đăng nhập phải có ít nhất 3 ký tự'
+    // }
     
     // Validate password
     if (!formData.password) {
       errors.password = 'Mật khẩu không được để trống'
-    } else if (formData.password.length < 8) {
-      errors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
-    }
+    } 
+    // else if (formData.password.length < 8) {
+    //   errors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
+    // }
     
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
@@ -135,8 +137,8 @@ export default function LoginPage() {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  validationErrors.username ? 'border-red-300' : 'border-gray-300'
+                className={`form-input ${
+                  validationErrors.username ? 'form-input-error' : ''
                 }`}
                 placeholder="Nhập tên đăng nhập hoặc email"
               />
@@ -157,8 +159,8 @@ export default function LoginPage() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    validationErrors.password ? 'border-red-300' : 'border-gray-300'
+                  className={`form-input pr-10 ${
+                    validationErrors.password ? 'form-input-error' : ''
                   }`}
                   placeholder="Nhập mật khẩu"
                 />

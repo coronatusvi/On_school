@@ -165,8 +165,8 @@ export default function RegisterPage() {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  validationErrors.username ? 'border-red-300' : 'border-gray-300'
+                className={`form-input ${
+                  validationErrors.username ? 'form-input-error' : ''
                 }`}
                 placeholder="Nhập tên đăng nhập (3-50 ký tự, chỉ chữ, số, -, _)"
               />
@@ -187,8 +187,8 @@ export default function RegisterPage() {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  validationErrors.email ? 'border-red-300' : 'border-gray-300'
+                className={`form-input ${
+                  validationErrors.email ? 'form-input-error' : ''
                 }`}
                 placeholder="Nhập địa chỉ email"
               />
@@ -197,7 +197,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Full Name */}
             {/* Full Name */}
             <div>
               <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -209,7 +208,7 @@ export default function RegisterPage() {
                 type="text"
                 value={formData.full_name}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="form-input"
                 placeholder="Nhập họ và tên (không bắt buộc)"
               />
             </div>
@@ -227,8 +226,8 @@ export default function RegisterPage() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    validationErrors.password ? 'border-red-300' : 'border-gray-300'
+                  className={`form-input pr-10 ${
+                    validationErrors.password ? 'form-input-error' : ''
                   }`}
                   placeholder="Nhập mật khẩu (ít nhất 8 ký tự, có chữ hoa, thường, số)"
                 />
@@ -251,7 +250,7 @@ export default function RegisterPage() {
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2 ">
                 Xác nhận mật khẩu *
               </label>
               <input
@@ -261,99 +260,13 @@ export default function RegisterPage() {
                 required
                 value={confirmPassword}
                 onChange={handleConfirmPasswordChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  validationErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={'form-input'}
                 placeholder="Nhập lại mật khẩu"
               />
               {validationErrors.confirmPassword && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
               )}
-            </div>            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Mật khẩu *
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    validationErrors.password ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Nhập mật khẩu (tối thiểu 8 ký tự, có chữ hoa, thường, số)"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5 text-gray-400" />
-                  ) : (
-                    <Eye className="w-5 h-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-              {validationErrors.password && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
-              )}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Xác nhận mật khẩu *
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={confirmPassword}
-                onChange={handleConfirmPasswordChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  validationErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                }`}
-                placeholder="Nhập lại mật khẩu"
-              />
-              {validationErrors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Mật khẩu *
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-            </div>
+            </div> 
 
             <button
               type="submit"

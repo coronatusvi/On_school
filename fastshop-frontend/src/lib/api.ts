@@ -168,7 +168,15 @@ class ApiClient {
       const response = await this.api.get<ProductListResponse>('/products/', { params })
       return response.data
     } catch (error) {
-      throw error
+      // Trả về empty response thay vì throw error để tránh toast
+      console.error('Error fetching products:', error)
+      return {
+        items: [],
+        total: 0,
+        page: 1,
+        size: params?.limit || 100,
+        pages: 0
+      }
     }
   }
 
@@ -223,7 +231,9 @@ class ApiClient {
       })
       return response.data
     } catch (error) {
-      throw error
+      // Không ném lỗi để tránh hiển thị toast error
+      console.error('Error fetching featured products:', error)
+      return []
     }
   }
 
