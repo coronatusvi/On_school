@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -97,3 +97,17 @@ class TokenData(BaseModel):
     """
     username: Optional[str] = None
     user_id: Optional[int] = None
+
+
+class UserListResponse(BaseModel):
+    """
+    Schema cho response danh sách users với pagination
+    """
+    users: List[UserResponse]
+    total: int = Field(..., description="Tổng số users")
+    page: int = Field(..., description="Trang hiện tại")
+    size: int = Field(..., description="Số lượng items per page")
+    total_pages: int = Field(..., description="Tổng số trang")
+    
+    class Config:
+        from_attributes = True

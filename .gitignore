@@ -8,3 +8,7 @@
 /fastshop-frontend/node_modules
 /fastshop-frontend/.next
 /node_modules
+/fastapi_project/app/crud/__pycache__
+/fastapi_project/app/api/__pycache__
+/fastapi_project/app/api/v1/__pycache__
+/fastapi_project/app/api/v1/endpoints/__pycache__

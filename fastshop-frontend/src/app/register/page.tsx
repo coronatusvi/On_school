@@ -260,9 +260,11 @@ export default function RegisterPage() {
                 required
                 value={confirmPassword}
                 onChange={handleConfirmPasswordChange}
-                className={'form-input'}
+                className={`form-input ${
+                  validationErrors.confirmPassword ? 'form-input-error' : ''
+                }`}
                 placeholder="Nhập lại mật khẩu"
-              />
+              />    
               {validationErrors.confirmPassword && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
               )}

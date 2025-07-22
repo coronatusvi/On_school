@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -103,7 +103,7 @@ class ProductListResponse(BaseModel):
     """
     Schema cho danh sách sản phẩm với pagination
     """
-    items: list[ProductResponse]
+    items: List[ProductResponse]
     total: int = Field(..., description="Tổng số sản phẩm")
     page: int = Field(..., description="Trang hiện tại")
     size: int = Field(..., description="Số item mỗi trang")
@@ -136,3 +136,8 @@ class StockUpdate(BaseModel):
     """
     quantity: int = Field(..., description="Số lượng thay đổi (có thể âm để giảm)")
     reason: Optional[str] = Field(None, max_length=200, description="Lý do thay đổi")
+
+
+# Aliases for API compatibility
+ProductSearchRequest = ProductSearch
+StockUpdateRequest = StockUpdate

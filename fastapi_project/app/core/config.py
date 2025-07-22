@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     debug: bool = True
     version: str = "1.0.0"
     
+    # CORS
+    ALLOWED_HOSTS: list = ["*"]  # Allow all origins in development
+    
     class Config:
         env_file = ".env"
 

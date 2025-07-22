@@ -1,286 +1,352 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError
+
 from ..models.user import User
-from ..schemas.user import UserCreate, UserUpdate
+from ..schemas.user import UserCreate, UserUpdate, UserResponse
+from ..crud.user import user_repository
 from ..core.security import security_manager
 from ..core.exceptions import (
     ValidationException, ConflictException, ResourceNotFoundException,
-    DatabaseException, error_handler
+    DatabaseException
 )
 
 
 class BaseUserService(ABC):
     """
-    Abstract base class cho User Service
-    Thể hiện nguyên lý Abstraction trong OOP
+    Abstract base class for User Service
+    Implements the Interface Segregation Principle (SOLID)
     """
     
     @abstractmethod
-    def create_user(self, db: Session, user_data: UserCreate) -> User:
-        """Tạo user mới"""
+    def create_user(self, db: Session, *, user_data: UserCreate) -> User:
+        """Create a new user"""
         pass
     
     @abstractmethod
-    def get_user_by_id(self, db: Session, user_id: int) -> Optional[User]:
-        """Lấy user theo ID"""
+    def get_user_by_id(self, db: Session, *, user_id: int) -> Optional[User]:
+        """Get user by ID"""
         pass
     
     @abstractmethod
-    def authenticate_user(self, db: Session, username: str, password: str) -> Optional[User]:
-        """Xác thực user"""
+    def authenticate_user(self, db: Session, *, username: str, password: str) -> Optional[User]:
+        """Authenticate user"""
         pass
 
 
 class UserService(BaseUserService):
     """
-    Service class cho User business logic
-    Thể hiện các nguyên lý OOP:
-    - Encapsulation: Ẩn chi tiết implementation
-    - Inheritance: Kế thừa từ BaseUserService
-    - Single Responsibility: Chỉ xử lý logic liên quan đến User
+    User Service implementing business logic using Repository Pattern
+    
+    This class follows SOLID principles:
+    - Single Responsibility: Handles user business logic only
+    - Open/Closed: Can be extended without modification
+    - Liskov Substitution: Can replace BaseUserService
+    - Interface Segregation: Specific interfaces for specific operations
+    - Dependency Inversion: Depends on Repository abstraction
     """
     
     def __init__(self):
-        """Constructor - khởi tạo dependencies"""
+        """Initialize service with dependencies"""
+        self.user_repo = user_repository
         self.security = security_manager
     
-    def create_user(self, db: Session, user_data: UserCreate) -> User:
+    def create_user(self, db: Session, *, user_data: UserCreate) -> User:
         """
-        Tạo user mới với mã hóa mật khẩu
+        Create a new user with business logic validation
         
         Args:
             db: Database session
-            user_data: Dữ liệu user từ request
+            user_data: User creation data
             
         Returns:
-            User: User object đã được tạo
+            Created user instance
             
         Raises:
-            ConflictException: Nếu username hoặc email đã tồn tại
-            ValidationException: Nếu dữ liệu không hợp lệ
-            DatabaseException: Nếu có lỗi database
+            ConflictException: If username or email already exists
+            ValidationException: If validation fails
+            DatabaseException: If database operation fails
         """
         try:
-            # Kiểm tra user đã tồn tại
-            if self._user_exists(db, user_data.username, user_data.email):
-                raise ConflictException("Username hoặc email đã tồn tại")
+            # Check if username already exists
+            if self.user_repo.is_username_taken(db, username=user_data.username):
+                raise ConflictException(f"Username '{user_data.username}' is already taken")
+            
+            # Check if email already exists
+            if self.user_repo.is_email_taken(db, email=user_data.email):
+                raise ConflictException(f"Email '{user_data.email}' is already registered")
             
             # Hash password
-            try:
-                hashed_password = self.security.hash_password(user_data.password)
-            except (ValueError, RuntimeError) as e:
-                raise ValidationException(f"Lỗi mã hóa mật khẩu: {str(e)}")
+            hashed_password = self.security.hash_password(user_data.password)
             
-            # Tạo user object
-            user = User(
-                username=user_data.username,
-                email=user_data.email,
-                hashed_password=hashed_password,
-                full_name=user_data.full_name
+            # Create user through repository
+            user = self.user_repo.create_user(
+                db, 
+                user_in=user_data, 
+                hashed_password=hashed_password
             )
             
-            db.add(user)
-            db.commit()
-            db.refresh(user)
             return user
             
-        except (ConflictException, ValidationException):
-            db.rollback()
-            raise
         except IntegrityError as e:
-            db.rollback()
-            raise error_handler.handle_database_error(e)
-        except SQLAlchemyError as e:
-            db.rollback()
-            raise DatabaseException(f"Lỗi cơ sở dữ liệu: {str(e)}")
+            raise ConflictException("User with this username or email already exists")
         except Exception as e:
-            db.rollback()
-            raise DatabaseException(f"Lỗi không xác định: {str(e)}")
+            raise DatabaseException(f"Failed to create user: {str(e)}")
     
-    def get_user_by_id(self, db: Session, user_id: int) -> Optional[User]:
+    def get_user_by_id(self, db: Session, *, user_id: int) -> Optional[User]:
         """
-        Lấy user theo ID
+        Get user by ID with error handling
         
         Args:
             db: Database session
-            user_id: ID của user
+            user_id: User ID to search for
             
         Returns:
-            Optional[User]: User object hoặc None
+            User instance or None if not found
         """
-        return db.query(User).filter(User.id == user_id).first()
+        try:
+            return self.user_repo.get(db, id=user_id)
+        except Exception as e:
+            raise DatabaseException(f"Failed to get user: {str(e)}")
     
-    def get_user_by_username(self, db: Session, username: str) -> Optional[User]:
+    def get_user_by_id_or_404(self, db: Session, *, user_id: int) -> User:
         """
-        Lấy user theo username
+        Get user by ID or raise 404 exception
         
         Args:
             db: Database session
-            username: Username của user
+            user_id: User ID to search for
             
         Returns:
-            Optional[User]: User object hoặc None
-        """
-        return db.query(User).filter(User.username == username).first()
-    
-    def get_user_by_email(self, db: Session, email: str) -> Optional[User]:
-        """
-        Lấy user theo email
-        
-        Args:
-            db: Database session
-            email: Email của user
+            User instance
             
-        Returns:
-            Optional[User]: User object hoặc None
+        Raises:
+            ResourceNotFoundException: If user not found
         """
-        return db.query(User).filter(User.email == email).first()
-    
-    def authenticate_user(self, db: Session, username: str, password: str) -> Optional[User]:
-        """
-        Xác thực user với username/email và password
-        
-        Args:
-            db: Database session
-            username: Username hoặc email
-            password: Password
-            
-        Returns:
-            Optional[User]: User object nếu xác thực thành công, None nếu thất bại
-        """
-        # Tìm user theo username hoặc email
-        user = self.get_user_by_username(db, username)
+        user = self.get_user_by_id(db, user_id=user_id)
         if not user:
-            user = self.get_user_by_email(db, username)
-        
-        if not user:
-            return None
-        
-        # Kiểm tra password
-        if not self.security.verify_password(password, user.hashed_password):
-            return None
-        
-        # Kiểm tra user có active không
-        if not user.is_active:
-            return None
-        
+            raise ResourceNotFoundException(f"User with ID {user_id} not found")
         return user
     
-    def update_user(self, db: Session, user_id: int, user_data: UserUpdate) -> Optional[User]:
+    def authenticate_user(self, db: Session, *, username: str, password: str) -> Optional[User]:
         """
-        Cập nhật thông tin user
+        Authenticate user with username/email and password
         
         Args:
             db: Database session
-            user_id: ID của user
-            user_data: Dữ liệu cập nhật
+            username: Username or email
+            password: Plain text password
             
         Returns:
-            Optional[User]: User object đã cập nhật hoặc None
+            User instance if authentication successful, None otherwise
         """
-        user = self.get_user_by_id(db, user_id)
-        if not user:
-            return None
-        
-        # Cập nhật các fields
-        update_data = user_data.dict(exclude_unset=True)
-        for field, value in update_data.items():
-            if hasattr(user, field):
-                setattr(user, field, value)
-        
         try:
-            db.commit()
-            db.refresh(user)
+            # Get user by username or email
+            user = self.user_repo.get_by_username_or_email(db, identifier=username)
+            
+            if not user:
+                return None
+            
+            # Verify password
+            if not self.security.verify_password(password, user.hashed_password):
+                return None
+            
+            # Check if user is active
+            if not user.is_active:
+                return None
+            
             return user
-        except IntegrityError:
-            db.rollback()
-            raise ValueError("Lỗi khi cập nhật user - email đã tồn tại")
+            
+        except Exception as e:
+            raise DatabaseException(f"Authentication failed: {str(e)}")
     
-    def delete_user(self, db: Session, user_id: int) -> bool:
+    def update_user(self, db: Session, *, user: User, user_update: UserUpdate) -> User:
         """
-        Xóa user (soft delete bằng cách set is_active = False)
+        Update user information
         
         Args:
             db: Database session
-            user_id: ID của user
+            user: User instance to update
+            user_update: Update data
             
         Returns:
-            bool: True nếu thành công, False nếu user không tồn tại
+            Updated user instance
+            
+        Raises:
+            ConflictException: If username or email conflicts
+            ValidationException: If validation fails
         """
-        user = self.get_user_by_id(db, user_id)
-        if not user:
-            return False
-        
-        user.deactivate()
-        db.commit()
-        return True
+        try:
+            update_data = user_update.dict(exclude_unset=True)
+            
+            # Check username conflict
+            if "username" in update_data:
+                if self.user_repo.is_username_taken(
+                    db, 
+                    username=update_data["username"], 
+                    exclude_user_id=user.id
+                ):
+                    raise ConflictException(f"Username '{update_data['username']}' is already taken")
+            
+            # Check email conflict
+            if "email" in update_data:
+                if self.user_repo.is_email_taken(
+                    db, 
+                    email=update_data["email"], 
+                    exclude_user_id=user.id
+                ):
+                    raise ConflictException(f"Email '{update_data['email']}' is already registered")
+            
+            # Update user through repository
+            return self.user_repo.update(db, db_obj=user, obj_in=update_data)
+            
+        except IntegrityError as e:
+            raise ConflictException("Username or email already exists")
+        except Exception as e:
+            raise DatabaseException(f"Failed to update user: {str(e)}")
     
-    def get_users_list(self, db: Session, skip: int = 0, limit: int = 100) -> List[User]:
+    def change_password(self, db: Session, *, user: User, current_password: str, new_password: str) -> User:
         """
-        Lấy danh sách users với pagination
+        Change user password
         
         Args:
             db: Database session
-            skip: Số record bỏ qua
-            limit: Số record tối đa
+            user: User instance
+            current_password: Current plain text password
+            new_password: New plain text password
             
         Returns:
-            List[User]: Danh sách users
-        """
-        return db.query(User).filter(User.is_active == True).offset(skip).limit(limit).all()
-    
-    def get_user_count(self, db: Session) -> int:
-        """
-        Đếm tổng số users active
-        
-        Args:
-            db: Database session
+            Updated user instance
             
-        Returns:
-            int: Số lượng users
+        Raises:
+            ValidationException: If current password is incorrect
         """
-        return db.query(User).filter(User.is_active == True).count()
-    
-    def change_password(self, db: Session, user_id: int, new_password: str) -> bool:
-        """
-        Thay đổi mật khẩu user
+        # Verify current password
+        if not self.security.verify_password(current_password, user.hashed_password):
+            raise ValidationException("Current password is incorrect")
         
-        Args:
-            db: Database session
-            user_id: ID của user
-            new_password: Mật khẩu mới
-            
-        Returns:
-            bool: True nếu thành công
-        """
-        user = self.get_user_by_id(db, user_id)
-        if not user:
-            return False
-        
+        # Hash new password
         hashed_password = self.security.hash_password(new_password)
-        user.hashed_password = hashed_password
-        db.commit()
-        return True
+        
+        # Update password through repository
+        return self.user_repo.update_password(db, user=user, hashed_password=hashed_password)
     
-    def _user_exists(self, db: Session, username: str, email: str) -> bool:
+    def get_users_list(
+        self, 
+        db: Session, 
+        *, 
+        skip: int = 0, 
+        limit: int = 100,
+        search: Optional[str] = None,
+        is_active: Optional[bool] = None
+    ) -> List[User]:
         """
-        Private method kiểm tra user đã tồn tại
-        Thể hiện Encapsulation - ẩn implementation detail
+        Get list of users with filtering
         
         Args:
             db: Database session
-            username: Username cần kiểm tra
-            email: Email cần kiểm tra
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+            search: Search query for username, email, or full name
+            is_active: Filter by active status
             
         Returns:
-            bool: True nếu user đã tồn tại
+            List of user instances
         """
-        return db.query(User).filter(
-            (User.username == username) | (User.email == email)
-        ).first() is not None
+        try:
+            if search:
+                return self.user_repo.search_users(db, query=search, skip=skip, limit=limit)
+            
+            filters = {}
+            if is_active is not None:
+                filters["is_active"] = is_active
+            
+            return self.user_repo.get_multi(db, skip=skip, limit=limit, filters=filters)
+            
+        except Exception as e:
+            raise DatabaseException(f"Failed to get users list: {str(e)}")
+    
+    def activate_user(self, db: Session, *, user: User) -> User:
+        """
+        Activate user account
+        
+        Args:
+            db: Database session
+            user: User instance to activate
+            
+        Returns:
+            Updated user instance
+        """
+        try:
+            return self.user_repo.activate_user(db, user=user)
+        except Exception as e:
+            raise DatabaseException(f"Failed to activate user: {str(e)}")
+    
+    def deactivate_user(self, db: Session, *, user: User) -> User:
+        """
+        Deactivate user account
+        
+        Args:
+            db: Database session
+            user: User instance to deactivate
+            
+        Returns:
+            Updated user instance
+        """
+        try:
+            return self.user_repo.deactivate_user(db, user=user)
+        except Exception as e:
+            raise DatabaseException(f"Failed to deactivate user: {str(e)}")
+    
+    def delete_user(self, db: Session, *, user_id: int) -> bool:
+        """
+        Delete user account
+        
+        Args:
+            db: Database session
+            user_id: User ID to delete
+            
+        Returns:
+            True if deletion successful
+            
+        Raises:
+            ResourceNotFoundException: If user not found
+        """
+        try:
+            user = self.get_user_by_id_or_404(db, user_id=user_id)
+            deleted_user = self.user_repo.delete(db, id=user_id)
+            return deleted_user is not None
+            
+        except Exception as e:
+            raise DatabaseException(f"Failed to delete user: {str(e)}")
+    
+    def get_user_stats(self, db: Session) -> Dict[str, Any]:
+        """
+        Get user statistics
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            Dictionary with user statistics
+        """
+        try:
+            total_users = self.user_repo.count(db)
+            active_users = self.user_repo.count(db, filters={"is_active": True})
+            inactive_users = total_users - active_users
+            superusers = self.user_repo.count(db, filters={"is_superuser": True})
+            
+            return {
+                "total_users": total_users,
+                "active_users": active_users,
+                "inactive_users": inactive_users,
+                "superusers": superusers
+            }
+            
+        except Exception as e:
+            raise DatabaseException(f"Failed to get user stats: {str(e)}")
 
 
-# Singleton instance
+# Create a singleton instance
 user_service = UserService()

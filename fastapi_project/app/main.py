@@ -1,199 +1,254 @@
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+"""
+FastAPI application with Repository Pattern
+This is the new main.py using the Repository Pattern architecture
 
+Architecture:
+├── main.py (this file)          # FastAPI app configuration
+├── models/                      # Pydantic models & SQLAlchemy ORM models
+├── crud/                        # Repository/CRUD operations 
+├── services/                    # Business logic using CRUD operations
+└── api/
+    └── v1/
+        └── endpoints/           # FastAPI routes using services
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
+import logging
+from typing import Any
+
+from .core.database import db_manager, Base
 from .core.config import settings
-from .core.database import db_manager
-from .routers import auth, users, products
+from .core.exceptions import (
+    ValidationException, ConflictException, ResourceNotFoundException,
+    DatabaseException, UnauthorizedException
+)
+from .api.v1.api import api_router
+import time
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Context manager cho lifecycle của ứng dụng
-    Khởi tạo database khi start và cleanup khi shutdown
+    Application lifespan manager
+    Handles startup and shutdown events
     """
     # Startup
-    print("🚀 Starting FastAPI application...")
-    print(f"📦 App: {settings.app_name} v{settings.version}")
+    logger.info("Starting up FastAPI application with Repository Pattern...")
     
-    # Tạo các bảng database
-    db_manager.create_tables()
-    print("✅ Database tables created")
+    # Create database tables
+    try:
+        db_manager.create_tables()
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+        raise
     
     yield
     
     # Shutdown
-    print("🛑 Shutting down FastAPI application...")
+    logger.info("Shutting down FastAPI application...")
 
 
-class FastAPIApp:
+# Create FastAPI app with lifespan
+app = FastAPI(
+    title="FastShop API with Repository Pattern",
+    description="""
+    A modern e-commerce API built with FastAPI using Repository Pattern architecture.
+    
+    ## Features
+    
+    * **User Management**: Registration, authentication, profile management
+    * **Product Management**: CRUD operations, search, categorization, stock management
+    * **Repository Pattern**: Clean separation of concerns with Repository/Service layers
+    * **SOLID Principles**: Following SOLID design principles throughout the codebase
+    * **Comprehensive Error Handling**: Structured exception handling with custom exceptions
+    * **JWT Authentication**: Secure token-based authentication
+    * **Input Validation**: Comprehensive request/response validation using Pydantic
+    
+    ## Architecture
+    
+    This API follows the Repository Pattern with clear separation of layers:
+    
+    * **API Layer** (`/api/v1/endpoints/`): FastAPI routes handling HTTP requests
+    * **Service Layer** (`/services/`): Business logic and orchestration
+    * **Repository Layer** (`/crud/`): Data access and persistence operations
+    * **Model Layer** (`/models/`): SQLAlchemy ORM models and Pydantic schemas
+    * **Core Layer** (`/core/`): Configuration, database, security, and utilities
+    
+    ## Authentication
+    
+    Most endpoints require JWT authentication. To authenticate:
+    
+    1. Register a new user or login with existing credentials
+    2. Use the returned `access_token` in the Authorization header: `Bearer <token>`
+    
+    ## Error Handling
+    
+    The API returns structured error responses with appropriate HTTP status codes:
+    
+    * **400**: Bad Request - Invalid input or business logic violation
+    * **401**: Unauthorized - Authentication required or failed
+    * **403**: Forbidden - Insufficient permissions
+    * **404**: Not Found - Requested resource doesn't exist
+    * **409**: Conflict - Resource conflict (e.g., duplicate username)
+    * **422**: Unprocessable Entity - Validation errors
+    * **500**: Internal Server Error - Unexpected server errors
+    """,
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_HOSTS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
+# Custom exception handlers
+@app.exception_handler(ValidationException)
+async def validation_exception_handler(request: Request, exc: ValidationException) -> JSONResponse:
+    """Handle validation exceptions"""
+    logger.warning(f"Validation error: {exc}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc), "type": "validation_error"}
+    )
+
+
+@app.exception_handler(ConflictException)
+async def conflict_exception_handler(request: Request, exc: ConflictException) -> JSONResponse:
+    """Handle conflict exceptions"""
+    logger.warning(f"Conflict error: {exc}")
+    return JSONResponse(
+        status_code=409,
+        content={"detail": str(exc), "type": "conflict_error"}
+    )
+
+
+@app.exception_handler(ResourceNotFoundException)
+async def not_found_exception_handler(request: Request, exc: ResourceNotFoundException) -> JSONResponse:
+    """Handle resource not found exceptions"""
+    logger.warning(f"Resource not found: {exc}")
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc), "type": "not_found_error"}
+    )
+
+
+@app.exception_handler(UnauthorizedException)
+async def unauthorized_exception_handler(request: Request, exc: UnauthorizedException) -> JSONResponse:
+    """Handle unauthorized exceptions"""
+    logger.warning(f"Unauthorized access: {exc}")
+    return JSONResponse(
+        status_code=403,
+        content={"detail": str(exc), "type": "unauthorized_error"}
+    )
+
+
+@app.exception_handler(DatabaseException)
+async def database_exception_handler(request: Request, exc: DatabaseException) -> JSONResponse:
+    """Handle database exceptions"""
+    logger.error(f"Database error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "type": "database_error"}
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle unexpected exceptions"""
+    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "type": "unexpected_error"}
+    )
+
+
+# Include API routers
+app.include_router(api_router, prefix="/api/v1")
+
+
+# Health check endpoint
+@app.get("/", tags=["health"])
+async def root() -> Any:
     """
-    Class chính của ứng dụng FastAPI
-    Thể hiện nguyên lý OOP trong việc tổ chức ứng dụng
-    - Encapsulation: Ẩn chi tiết cấu hình
-    - Single Responsibility: Chỉ chịu trách nhiệm khởi tạo app
-    """
-    
-    def __init__(self):
-        """
-        Constructor khởi tạo FastAPI app với cấu hình
-        """
-        self.app = FastAPI(
-            title=settings.app_name,
-            version=settings.version,
-            debug=settings.debug,
-            description=self._get_description(),
-            lifespan=lifespan
-        )
-        
-        self._configure_middleware()
-        self._register_routers()
-    
-    def _get_description(self) -> str:
-        """
-        Private method để tạo description cho API
-        Thể hiện Encapsulation
-        """
-        return """
-        ## FastAPI Project
-
-        Dự án FastAPI đầy đủ để thực hành các khái niệm:
-        
-        ### 🔧 Kiến trúc
-        - **Object-Oriented Programming (OOP)**: Classes, inheritance, encapsulation, polymorphism
-        - **Dependency Injection**: FastAPI dependencies cho database, authentication
-        - **Service Layer Pattern**: Tách biệt business logic khỏi API layer
-        - **Repository Pattern**: Quản lý data access thông qua models
-        
-        ### 🛡️ Bảo mật
-        - **JWT Authentication**: Token-based authentication
-        - **Password Hashing**: Bcrypt password hashing
-        - **Role-based Access**: User permissions và ownership
-        
-        ### 📊 Database
-        - **SQLAlchemy ORM**: Object-relational mapping
-        - **Relationships**: User-Product one-to-many relationship
-        - **Migrations**: Database schema management
-        
-        ### 🚀 API Features
-        - **CRUD Operations**: Create, Read, Update, Delete
-        - **Search & Filter**: Advanced product search
-        - **Pagination**: Efficient data pagination
-        - **Validation**: Pydantic data validation
-        """
-    
-    def _configure_middleware(self):
-        """
-        Private method để cấu hình middleware
-        Thể hiện Encapsulation
-        """
-        # CORS middleware để cho phép frontend gọi API
-        self.app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],  # Trong production nên cấu hình cụ thể
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-    
-    def _register_routers(self):
-        """
-        Private method để đăng ký các router
-        Thể hiện Encapsulation và Composition
-        """
-        # Đăng ký các router với prefix
-        self.app.include_router(auth.router)
-        self.app.include_router(users.router)
-        self.app.include_router(products.router)
-    
-    def get_app(self) -> FastAPI:
-        """
-        Public method để lấy FastAPI app instance
-        
-        Returns:
-            FastAPI: Configured FastAPI application
-        """
-        return self.app
-
-
-# Root endpoint
-@asynccontextmanager
-async def get_app_with_routes():
-    """Factory function để tạo app với tất cả routes"""
-    app_instance = FastAPIApp()
-    app = app_instance.get_app()
-    
-    @app.get("/", tags=["Root"])
-    async def root():
-        """
-        Root endpoint để kiểm tra API hoạt động
-        """
-        return {
-            "message": "🎉 Welcome to FastAPI OOP Practice Project!",
-            "app_name": settings.app_name,
-            "version": settings.version,
-            "docs_url": "/docs",
-            "redoc_url": "/redoc",
-            "features": [
-                "JWT Authentication",
-                "User Management", 
-                "Product Management",
-                "Advanced Search",
-                "OOP Design Patterns",
-                "Service Layer Architecture"
-            ]
-        }
-    
-    @app.get("/health", tags=["Health"])
-    async def health_check():
-        """
-        Health check endpoint
-        """
-        return {
-            "status": "healthy",
-            "app": settings.app_name,
-            "version": settings.version
-        }
-    
-    yield app
-
-
-# Tạo instance của ứng dụng
-app_factory = FastAPIApp()
-app = app_factory.get_app()
-
-
-# Root routes
-@app.get("/", tags=["Root"])
-async def root():
-    """
-    Root endpoint để kiểm tra API hoạt động
+    Root endpoint for health check
     """
     return {
-        "message": "🎉 Welcome to FastAPI OOP Practice Project!",
-        "app_name": settings.app_name,
-        "version": settings.version,
-        "docs_url": "/docs",
-        "redoc_url": "/redoc",
-        "features": [
-            "JWT Authentication",
-            "User Management", 
-            "Product Management",
-            "Advanced Search",
-            "OOP Design Patterns",
-            "Service Layer Architecture"
-        ]
+        "message": "FastShop API with Repository Pattern",
+        "version": "2.0.0",
+        "status": "healthy",
+        "architecture": "Repository Pattern",
+        "docs": "/docs",
+        "redoc": "/redoc"
     }
 
 
-@app.get("/health", tags=["Health"])
-async def health_check():
+@app.get("/health", tags=["health"])
+async def health_check() -> Any:
     """
     Health check endpoint
     """
-    return {
-        "status": "healthy",
-        "app": settings.app_name,
-        "version": settings.version
-    }
+    try:
+        # Test database connection
+        db_session = next(db_manager.get_session())
+        db_session.execute("SELECT 1")
+        db_session.close()
+        
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "timestamp": "2024-01-01T00:00:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=503, detail="Service unavailable")
+
+
+# Add startup event logging
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all requests for debugging"""
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    
+    logger.info(
+        f"{request.method} {request.url.path} - "
+        f"Status: {response.status_code} - "
+        f"Time: {process_time:.4f}s"
+    )
+    
+    return response
+
+
+if __name__ == "__main__":
+    import uvicorn
+    import time
+    
+    uvicorn.run(
+        "app.main_new:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
