@@ -2,7 +2,7 @@ from fastapi import FastAPI, BackgroundTasks, Query, HTTPException
 from fastapi.responses import HTMLResponse
 from uuid import uuid4
 from .models import save_task, fetch_result
-from .tasks import calculate_heavy, crawl_flights_with_playwright, crawl_flights_with_requests
+from .tasks import calculate_heavy, crawl_flights
 
 app = FastAPI(title="Async Task API Demo")
 
@@ -13,7 +13,7 @@ def submit(option: str = Query(..., regex="^(cal|crawl)$"), background_tasks: Ba
     if option == "cal":
         background_tasks.add_task(calculate_heavy, session_id)
     elif option == "crawl":
-        background_tasks.add_task(crawl_flights_with_playwright, session_id)
+        background_tasks.add_task(crawl_flights, session_id)
     return {"session": session_id, "status": "started"}
 
 @app.get("/result/{session_id}", response_class=HTMLResponse)
