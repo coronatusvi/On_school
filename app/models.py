@@ -1,25 +1,31 @@
-import sqlite3
+from sqlalchemy import Column, String, Text, Float, DateTime
+from datetime import datetime
+from .database import Base
+from sqlalchemy.orm import Session
 
-conn = sqlite3.connect("results.db", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute('''CREATE TABLE IF NOT EXISTS tasks (
-    session TEXT PRIMARY KEY,
-    type TEXT,
-    status TEXT,
-    result TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)''')
-conn.commit()
+class Task(Base):
+    __tablename__ = "tasks"
 
-def save_task(session_id: str, option: str, status: str = "pending", result: str = ""):
-    cursor.execute("REPLACE INTO tasks (session, type, status, result) VALUES (?, ?, ?, ?)",
-                   (session_id, option, status, result))
-    conn.commit()
+    session = Column(String, primary_key=True, index=True)
+    type = Column(String)
+    status = Column(String)
+    result = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    duration = Column(Float)
 
-def update_result(session_id: str, result: str):
-    cursor.execute("UPDATE tasks SET status = 'done', result = ? WHERE session = ?", (result, session_id))
-    conn.commit()
+def save_task(db: Session, session_id: str, option: str):
+    db_task = Task(session=session_id, type=option, status="pending", result="")
+    db.merge(db_task)  # Thay cho insert or update
+    db.commit()
 
-def fetch_result(session_id: str):
-    cursor.execute("SELECT status, result FROM tasks WHERE session = ?", (session_id,))
-    return cursor.fetchone()
+def update_result(db: Session, session_id: str, result: str, duration: float = None):
+    task = db.query(Task).filter(Task.session == session_id).first()
+    if task:
+        task.status = "done"
+        task.result = result
+        if duration:
+            task.duration = duration
+        db.commit()
+
+def fetch_result(db: Session, session_id: str):
+    return db.query(Task).filter(Task.session == session_id).first()

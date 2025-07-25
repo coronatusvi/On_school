@@ -47,17 +47,17 @@ async_api_demo/
 
 ```bash
 # Tạo thư mục và môi trường ảo
-python -m venv venv
-source venv/bin/activate  # Hoặc venv\Scripts\activate nếu dùng Windows
+python -m venv async
+source venv/bin/activate  # Hoặc '''source async/Scripts/activate''' nếu dùng Windows
 pip install -r requirements.txt
+
+### 🌐 Cài đặt Playwright Browser Binaries 
+```bash
+playwright install
+```
 
 # Chạy server
 uvicorn app.main:app --reload
-```
-
-### 🌐 Cài đặt Playwright Browser Binaries (nếu cần crawl nâng cao)
-```bash
-playwright install
 ```
 
 ## 🧪 Sử dụng API
